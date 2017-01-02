@@ -29,5 +29,7 @@ SYSCALL(getpid)
 SYSCALL(getppid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
+SYSCALL(nice)
 SYSCALL(uptime)
 SYSCALL(getPerformanceData)
+

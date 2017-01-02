@@ -55,7 +55,8 @@ int ctime; //creation
   int rtime; //run
   int etime; //end
 int prt;	//FS scheduler
-//int ct; 	//FRR scheduler
+//int ct; 
+int pctime;	//FRR scheduler
 int pp; //pp for mlq
   uint sz;                     // Size of process memory (bytes)
   pde_t* pgdir;                // Page table

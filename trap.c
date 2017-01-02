@@ -13,7 +13,7 @@ struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
-int counter=0;
+int counter=QUANTA;
 
 void
 tvinit(void)
@@ -48,28 +48,30 @@ trap(struct trapframe *tf)
   }
 
   switch(tf->trapno){
-  case T_IRQ0 + IRQ_TIMER:
-    if(cpunum() == 0){
-      acquire(&tickslock);
-if (counter==QUANTA){
-      ticks++;
-counter=0;}
-else 
-counter++;
-      wakeup(&ticks);
-      release(&tickslock);
+ 
+ case T_IRQ0 + IRQ_TIMER:
 
 
-
-
-
-      if(proc) 
+	if(proc) 
       {
         if(proc->state == RUNNING)
           proc->rtime++;
       }
 
     
+
+    if(cpunum() == 0){
+      acquire(&tickslock);
+
+	if (counter==QUANTA){
+      ticks++;
+	counter=0;}
+	else 
+	counter++;
+      wakeup(&ticks);
+      release(&tickslock);
+
+   
 
     }
     lapiceoi();

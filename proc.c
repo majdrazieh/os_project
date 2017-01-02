@@ -8,7 +8,6 @@
 #include "spinlock.h"
 
 struct {
-  
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
@@ -18,7 +17,7 @@ static struct proc *initproc;
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
-
+int p_count;
 static void wakeup1(void *chan);
 
 void
@@ -36,22 +35,18 @@ static struct proc*
 allocproc(void)
 {
   struct proc *p;
-
   char *sp;
 
   acquire(&ptable.lock);
-
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
-
   release(&ptable.lock);
   return 0;
 
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  //p->ctime=ticks;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -74,11 +69,12 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-p->ctime=ticks;
+
+  //added
+  p->ctime=ticks;
 p->etime=0;
 p->rtime=0;
-p->pp=3;
-
+p->pp=2;
   return p;
 }
 
@@ -116,6 +112,7 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+//p_count++;
 
   release(&ptable.lock);
 }
@@ -180,7 +177,7 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
-
+p_count++;
   release(&ptable.lock);
 
   return pid;
@@ -227,7 +224,9 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
-p->etime=ticks;
+  
+  proc->etime = ticks; 
+
   sched();
   panic("zombie exit");
 }
@@ -270,17 +269,10 @@ wait(void)
       return -1;
     }
 
-
-
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
-
-
-
-
-
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
@@ -293,26 +285,23 @@ wait(void)
 void
 scheduler(void)
 {
- 
-	//int olaviat=3;
-	int lowcounter=0;
-	int medumcounter=0;
-	int highcounter=0;
-	
-struct proc *p;
-//p->ct=p->ctime; 
- // int counter = QUANTA ;
+  struct proc *p;
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    #ifdef RR
- 
+//_________________________________________________________
+#ifdef RR
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+
+
+
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -320,99 +309,52 @@ struct proc *p;
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+
       swtch(&cpu->scheduler, p->context);
       switchkvm();
-     // counter = 0;
-     // break;
+
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;
     }
-//else{counter++;}
-
 #else
+//____________________________________________________________
+
+
+
 #ifdef FRR
 
-//if(counter==QUANTA || proc->etime != 0){
-	struct proc *minp=null;
+
+  struct proc *minp=null;
+
 for(p=ptable.proc; p < &ptable.proc[NPROC]; p++){
   if(p->state == RUNNABLE){
 if(minp != null){
 if(p->ctime< minp->ctime)
 minp=p;
 }
-else{
+else
 minp=p;
-}
+
 }
 }
 if(minp != null){
 p= minp;
 proc=p;
 switchuvm(p);
+
+//cprintf("%d \n",p->pid);
+
  p->state = RUNNING;
       swtch(&cpu->scheduler, p->context);
       switchkvm();
-      //counter = 0;
+    
 proc = 0;
 }
-
-//else{
-//counter++;
-//if(counter == QUANTA)
-//p->ct=ticks;
-//}
-
-
+}
 #else
-#ifdef FS
-//if(counter==QUANTA || proc->etime != 0){
-	struct proc *mminp=null;
-for(p=ptable.proc; p < &ptable.proc[NPROC]; p++){
-  if(p->state == RUNNABLE){
-if(mminp != null){
- p->prt = (p->rtime/(ticks - p->ctime));
-if(p->prt < mminp->prt)
-mminp=p;
-}
-else{
-mminp=p;
-}
-
-}
-
-}
-if(mminp != null){
-p= mminp;
-proc=p;
-switchuvm(p);
- p->state = RUNNING;
-      swtch(&cpu->scheduler, p->context);
-      switchkvm();
-     // counter = 0;
-proc = 0;
-
-}
-//else{
-//counter++;
-//}
-
-
-#else
-#ifdef MLQ
-for(p=ptable.proc; p < &ptable.proc[NPROC]; p++){
-
-if(p->pp==1)
-highcounter++;
-
-if(p->pp==2)
-medumcounter++;
-
-if (p->pp==3)
-lowcounter++;
-
-}
-while(highcounter!=0){
+//__________________________________________________
+#ifdef GRT
 struct proc *mminp=null;
 for(p=ptable.proc; p < &ptable.proc[NPROC]; p++){
   if(p->state == RUNNABLE){
@@ -429,6 +371,58 @@ mminp=p;
 
 }
 if(mminp != null){
+p=mminp;
+proc=p;
+switchuvm(p);
+ p->state = RUNNING;
+      swtch(&cpu->scheduler, p->context);
+      switchkvm();
+     // counter = 0;
+proc = 0;
+
+}
+
+
+
+
+
+#else
+
+//____________________________________________________
+
+#ifdef MLQ
+int lc=0;
+  int mc=0;
+  int hc=0;
+
+for(p=ptable.proc; p < &ptable.proc[NPROC]; p++){
+
+if(p->pp==2)
+hc++;
+
+if(p->pp==1)
+mc++;
+
+if (p->pp==0)
+lc++;
+
+}
+
+while(hc!=0){
+struct proc *mminp=null;
+for(p=ptable.proc; p < &ptable.proc[NPROC]; p++){
+  if(p->state == RUNNABLE && p->pp==2 ){
+if(mminp != null){
+ p->prt = (p->rtime/(ticks - p->ctime));
+if(p->prt < mminp->prt)
+mminp=p;
+}
+else{
+mminp=p;
+}
+}
+}
+if(mminp != null){
 p= mminp;
 proc=p;
 switchuvm(p);
@@ -438,15 +432,16 @@ switchuvm(p);
      // counter = 0;
 proc = 0;
 }
+hc--;
 }
 
 
-while(medumcounter!=0)
+while(mc!=0)
 {
 
 struct proc *minp=null;
 for(p=ptable.proc; p < &ptable.proc[NPROC]; p++){
-  if(p->state == RUNNABLE){
+  if(p->state == RUNNABLE && p->pp==1){
 if(minp != null){
 if(p->ctime< minp->ctime)
 minp=p;
@@ -466,13 +461,13 @@ switchuvm(p);
       //counter = 0;
 proc = 0;
 }
-
+mc--;
 }
 
-while(lowcounter!=0)
+while(lc!=0)
 {
 for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->state != RUNNABLE && p->pp=0)
         continue;
 
       // Switch to chosen process.  It is the process's job
@@ -489,18 +484,15 @@ for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       // It should have changed its p->state before coming back.
       proc = 0;
     }
-
+lc--;
 }
 
+//___________________________________________________
 
-
-
-
-
-
-	#endif
-       #endif
-	#endif
+#endif
+#endif
+#endif
+#endif
     release(&ptable.lock);
 
   }
@@ -527,6 +519,9 @@ sched(void)
   if(readeflags()&FL_IF)
     panic("sched interruptible");
   intena = cpu->intena;
+//print queue
+
+
   swtch(&proc->context, cpu->scheduler);
   cpu->intena = intena;
 }
@@ -683,12 +678,13 @@ procdump(void)
 
 
 
-
-
-int getPerformanceData(int *wtime, int *rtime)
+//added
+//in tabe eyne khode wait e barnamast ba 1 tafavot. inke time haro ghabl az pak kardan bayad set konim. pas hamasho az waite khodesh copy kardim :|
+int
+getPerformanceData(int *wtime, int *rtime)
 {
   struct proc *p;
-  int havekids,pid;
+  int havekids, pid;
 
   acquire(&ptable.lock);
 
@@ -724,4 +720,17 @@ int getPerformanceData(int *wtime, int *rtime)
 
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
+}
+
+
+int
+nice(void)
+{
+  if(proc){
+    int temp = proc->pp;
+    if(temp>0) temp--;
+    proc->pp = temp;
+    return 1;
+  }
+ return -1;
 }

@@ -113,3 +113,9 @@ sys_getPerformanceData(void)
 
   return getPerformanceData(wtime,rtime);
 }
+
+int 
+sys_nice(void)
+{
+return nice();
+}
