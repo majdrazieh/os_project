@@ -1,4 +1,3 @@
-/*
 
 #include "types.h"
 #include "stat.h"
@@ -40,7 +39,7 @@ return 0;
 }
 
 
-*/
+/*
 
 
 
@@ -52,7 +51,7 @@ int main (void)
  int Pid[10];
 int j;
 int n=10;
-//int k;
+int k;
 int i;
  for( j = 0; j<n ; j++){
   	Pid[j] = fork();
@@ -68,4 +67,4 @@ printf(1,"my pid=%d \n" ,getpid());
 }
 	//exit();
 	return 0;
-}
+}*/

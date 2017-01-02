@@ -177,7 +177,7 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
-p_count++;
+//p_count++;
   release(&ptable.lock);
 
   return pid;
@@ -467,7 +467,7 @@ mc--;
 while(lc!=0)
 {
 for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE && p->pp=0)
+      if(p->state != RUNNABLE && p->pp==0)
         continue;
 
       // Switch to chosen process.  It is the process's job
